@@ -1,5 +1,6 @@
-import os
 import argparse
+import base64
+import os
 import sys
 
 import codepost
@@ -44,6 +45,21 @@ def get_students_from_submission(submission):
 def is_directory(path):
     return path is not None
 
+def write_file(cp_file, path="."):
+    # thanks to @sschaub for prodding us to support binary files output
+    data = cp_file.code
+    is_binary = False
+
+    if data[0:4] == "data" and "," in data[0:100]:
+        prefix, data_remainder = data.split(",", 1)
+        if prefix.split(";")[-1] == "base64":
+            data = base64.b64decode(data_remainder)
+            is_binary = True
+    
+    with open(os.path.join(path, cp_file.name), 'wb' if is_binary else 'w') as f:
+        f.write(data)
+        f.close()
+
 for submission in submissions:
 
     # create folder for this submission
@@ -61,14 +77,10 @@ for submission in submissions:
             if not os.path.exists(sub_dir):
                 os.makedirs(sub_dir)
 
-            with open(os.path.join(sub_dir, file.name), 'w') as f:
-                f.write(file.code)
-                f.close()
+            write_file(file, path=sub_dir)
 
         else:
-            with open(os.path.join(student_dir, file.name), 'w') as f:
-                f.write(file.code)
-                f.close()
+            write_file(file, path=student_dir)
 
     # report progress to terminal
     print('#', end="")
